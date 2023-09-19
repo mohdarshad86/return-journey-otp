@@ -75,7 +75,31 @@ const validateOTP = async (req, res) => {
     try {
         const { otp } = req.body;
 
-        
+        const { ip } = req.userInfo;
+
+        let userData = cache.get(ip);
+        console.log("userData", userData);
+        const { phoneNumber } = userData
+
+        if (ip != userData.ip) {
+            return res.status(400).send({ status: 'false', message: "Not Autherised User" });
+        }
+        const hashedOTP = userData.otp.toString()
+        const match = await bcrypt.compare(otp, hashedOTP);
+
+        if (!match) {
+            return res.status(400).send({ status: 'false', message: "Incorrect OTP" });
+        }
+
+        await otpModel.findOneAndUpdate(
+            { phoneNumber: phoneNumber },
+            {
+                $set: {
+                    phoneNumber: phoneNumber,
+                }
+            },
+            { new: true, upsert: true }
+        );
 
         return res.status(200).send({ status: 'true', message: "OTP Verification Successfully" });
     } catch (error) {
